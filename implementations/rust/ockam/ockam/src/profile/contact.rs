@@ -98,7 +98,7 @@ impl Contact {
 
 impl Contact {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
-    pub fn verify(&self, vault: &mut dyn ProfileVault) -> ockam_core::Result<()> {
+    pub fn verify(&self, vault: &mut impl ProfileVault) -> ockam_core::Result<()> {
         ProfileChangeHistory::check_consistency(&[], self.change_events())?;
 
         self.change_history.verify_all_existing_events(vault)?;
@@ -119,7 +119,7 @@ impl Contact {
     pub fn verify_and_update(
         &mut self,
         change_events: Vec<ProfileChangeEvent>,
-        vault: &mut dyn ProfileVault,
+        vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<()> {
         ProfileChangeHistory::check_consistency(self.change_events(), &change_events)?;
 

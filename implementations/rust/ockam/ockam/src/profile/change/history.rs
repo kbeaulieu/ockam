@@ -150,7 +150,7 @@ impl ProfileChangeHistory {
 impl ProfileChangeHistory {
     pub(crate) fn verify_all_existing_events(
         &self,
-        vault: &mut dyn ProfileVault,
+        vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<()> {
         for i in 0..self.0.len() {
             let existing_events = &self.as_ref()[..i];
@@ -165,7 +165,7 @@ impl ProfileChangeHistory {
     pub(crate) fn verify_event(
         existing_events: &[ProfileChangeEvent],
         new_change_event: &ProfileChangeEvent,
-        vault: &mut dyn ProfileVault,
+        vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<bool> {
         let changes = new_change_event.changes();
         let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;

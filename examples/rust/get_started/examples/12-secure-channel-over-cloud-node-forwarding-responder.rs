@@ -1,8 +1,8 @@
-use ockam::{Context, RemoteForwarder, Result, SecureChannel, TcpTransport, Vault};
+use ockam::{Context, Profile, RemoteForwarder, Result, TcpTransport, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     // Create a cloud node by going to https://hub.ockam.network
     let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
 
@@ -17,12 +17,14 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
 
+    let mut bob = Profile::create(&ctx, &vault)?;
+
     // Create a secure channel listener at address "secure_channel_listener"
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
+    bob.create_secure_channel_listener(&ctx, "secure_channel_listener")
+        .await?;
 
     let forwarder =
-        RemoteForwarder::create(&mut ctx, cloud_node_tcp_address, "secure_channel_listener")
-            .await?;
+        RemoteForwarder::create(&ctx, cloud_node_tcp_address, "secure_channel_listener").await?;
     println!("Forwarding address: {}", forwarder.remote_address());
 
     Ok(())

@@ -26,10 +26,10 @@ impl AuthenticationProof {
 pub(crate) struct Authentication {}
 
 impl Authentication {
-    pub(crate) fn generate_proof(
+    pub(crate) fn generate_proof<V: ProfileVault>(
         channel_state: &[u8],
         secret: &Secret,
-        vault: &mut dyn ProfileVault,
+        vault: &mut V,
     ) -> ockam_core::Result<Vec<u8>> {
         let signature = vault.sign(secret, channel_state)?;
 
@@ -38,11 +38,11 @@ impl Authentication {
         serde_bare::to_vec(&proof).map_err(|_| OckamError::BareError.into())
     }
 
-    pub(crate) fn verify_proof(
+    pub(crate) fn verify_proof<V: ProfileVault>(
         channel_state: &[u8],
         responder_public_key: &PublicKey,
         proof: &[u8],
-        vault: &mut dyn ProfileVault,
+        vault: &mut V,
     ) -> ockam_core::Result<bool> {
         let proof: AuthenticationProof =
             serde_bare::from_slice(proof).map_err(|_| OckamError::BareError)?;
@@ -59,15 +59,15 @@ mod test {
     use crate::profile::ProfileSecrets;
     use crate::{KeyAttributes, Profile};
     use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::VaultSync;
+    use ockam_vault_sync_core::VaultMutex;
     use rand::prelude::*;
 
     #[test]
     fn authentication() {
-        let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+        let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
-        let mut bob = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
+        let mut alice = Profile::create_with_vault(vault.clone()).unwrap();
+        let mut bob = Profile::create_with_vault(vault.clone()).unwrap();
 
         // Secure channel is created here
         let mut key_agreement_hash = [0u8; 32];
@@ -104,10 +104,10 @@ mod test {
 
     #[test]
     fn authentication_profile_update_key_rotated() {
-        let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+        let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
-        let mut bob = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
+        let mut alice = Profile::create_with_vault(vault.clone()).unwrap();
+        let mut bob = Profile::create_with_vault(vault.clone()).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 
@@ -149,10 +149,10 @@ mod test {
 
     #[test]
     fn authentication_profile_update_key_rotated_after_first_handshake() {
-        let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+        let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
-        let mut bob = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
+        let mut alice = Profile::create_with_vault(vault.clone()).unwrap();
+        let mut bob = Profile::create_with_vault(vault.clone()).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 
