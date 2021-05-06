@@ -50,6 +50,20 @@ defmodule Ockam.Hub do
       ]
     )
 
+    StreamService.create(
+      address: "kafka_stream_service",
+      stream_options: [
+        storage_mod: Ockam.Stream.Storage.Kafka,
+        storage_options: [topic_prefix: "prefix_"]
+      ]
+    )
+
+    StreamIndexService.create(
+      address: "kafka_stream_index_service",
+      storage_mod: Ockam.Stream.Index.KafkaOffset,
+      storage_options: [topic_prefix: "prefix_"]
+    )
+
     # on app start, create the node if it does not exist
     # we probably don't care if this errors.
     TelemetryForwarder.init()
