@@ -84,7 +84,7 @@ impl<V: ProfileVault> ProfileImpl<V> {
         let prev_event_id = self.change_history.get_last_event_id()?;
 
         let last_event_in_chain =
-            ProfileChangeHistory::find_last_key_event(self.change_events(), &key_attributes)?
+            ProfileChangeHistory::find_last_key_event(self.change_events()?, &key_attributes)?
                 .clone();
 
         let last_key_in_chain = Self::get_secret_key_from_event(

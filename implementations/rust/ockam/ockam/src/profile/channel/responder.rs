@@ -1,4 +1,5 @@
 use crate::{
+    ProfileTrait,
     ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, OckamError, ProfileAuth,
     ProfileContacts, ProfileImpl, ProfileVault, Routed,
 };
@@ -17,9 +18,9 @@ pub(crate) struct Responder {
 }
 
 impl Responder {
-    pub async fn create<V: ProfileVault>(
+    pub async fn create<V: ProfileVault, P: ProfileTrait + Clone>(
         ctx: &Context,
-        profile: &mut ProfileImpl<V>,
+        profile: &mut P,
         listener_address: Address,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
@@ -56,7 +57,7 @@ impl Responder {
         let auth_hash = kex_msg.auth_hash();
 
         let proof = profile.generate_authentication_proof(&auth_hash)?;
-        let msg = ChannelAuthRequest::new(profile.to_contact(), proof);
+        let msg = ChannelAuthRequest::new(profile.to_contact()?, proof);
         child_ctx
             .send(
                 Route::new()
@@ -72,7 +73,7 @@ impl Responder {
         debug!("Received Authentication response");
 
         let contact = auth_msg.contact();
-        if profile.contacts().contains_key(contact.identifier()) {
+        if profile.contacts()?.contains_key(contact.identifier()) {
             // TODO: Update profile if needed
         } else {
             profile.verify_and_add_contact(contact.clone())?;

@@ -23,6 +23,8 @@ mod change;
 pub use change::*;
 mod channel;
 pub(crate) use channel::*;
+mod worker;
+pub use worker::*;
 
 pub trait ProfileVault:
     XXVault
@@ -325,8 +327,8 @@ mod test {
             .rotate_key(Profile::PROFILE_UPDATE.into(), None)
             .unwrap();
 
-        let index_a = alice.change_events().len();
-        let change_events = &alice.change_events()[index_a..];
+        let index_a = alice.change_events().unwrap().len();
+        let change_events = &alice.change_events().unwrap()[index_a..];
         let change_events = Profile::serialize_change_events(change_events).unwrap();
 
         // Receive from Alice

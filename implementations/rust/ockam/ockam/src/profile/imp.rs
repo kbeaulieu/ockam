@@ -5,6 +5,7 @@ use crate::{
     ProfileChangeEvent, ProfileChanges, ProfileContacts, ProfileEventAttributes, ProfileIdentifier,
     ProfileIdentity, ProfileSecrets, ProfileVault,
 };
+use ockam_core::Result;
 use ockam_vault_core::{PublicKey, Secret};
 
 #[derive(Clone)]
@@ -45,7 +46,7 @@ impl<V: ProfileVault> ProfileImpl<V> {
     pub(crate) fn create_internal(
         attributes: Option<ProfileEventAttributes>,
         mut vault: V,
-    ) -> ockam_core::Result<Self> {
+    ) -> Result<Self> {
         let prev_id = vault.sha256(Profile::NO_EVENT)?;
         let prev_id = EventIdentifier::from_hash(prev_id);
 
@@ -72,9 +73,9 @@ impl<V: ProfileVault> ProfileImpl<V> {
 }
 
 impl<V: ProfileVault> ProfileImpl<V> {
-    pub(crate) fn get_root_secret(&mut self) -> ockam_core::Result<Secret> {
+    pub(crate) fn get_root_secret(&mut self) -> Result<Secret> {
         let public_key =
-            ProfileChangeHistory::get_current_profile_update_public_key(self.change_events())?;
+            ProfileChangeHistory::get_current_profile_update_public_key(self.change_events()?)?;
 
         let key_id = self.vault.compute_key_id_for_public_key(&public_key)?;
         self.vault.get_secret_by_key_id(&key_id)
@@ -84,7 +85,7 @@ impl<V: ProfileVault> ProfileImpl<V> {
         key_attributes: &KeyAttributes,
         event: &ProfileChangeEvent,
         vault: &mut impl ProfileVault,
-    ) -> ockam_core::Result<Secret> {
+    ) -> Result<Secret> {
         let public_key = ProfileChangeHistory::get_public_key_from_event(key_attributes, event)?;
 
         let public_kid = vault.compute_key_id_for_public_key(&public_key)?;
@@ -94,28 +95,28 @@ impl<V: ProfileVault> ProfileImpl<V> {
 }
 
 impl<V: ProfileVault> ProfileIdentity for ProfileImpl<V> {
-    fn identifier(&self) -> &ProfileIdentifier {
-        &self.identifier
+    fn identifier(&mut self) -> Result<&ProfileIdentifier> {
+        Ok(&self.identifier)
     }
 }
 
 impl<V: ProfileVault> ProfileChanges for ProfileImpl<V> {
-    fn change_events(&self) -> &[ProfileChangeEvent] {
-        self.change_history.as_ref()
+    fn change_events(&mut self) -> Result<&[ProfileChangeEvent]> {
+        Ok(self.change_history.as_ref())
     }
     fn update_no_verification(
         &mut self,
         change_event: ProfileChangeEvent,
-    ) -> ockam_core::Result<()> {
+    ) -> Result<()> {
         let slice = std::slice::from_ref(&change_event);
-        ProfileChangeHistory::check_consistency(self.change_events(), &slice)?;
+        ProfileChangeHistory::check_consistency(self.change_events()?, &slice)?;
         self.change_history.push_event(change_event);
 
         Ok(())
     }
     /// Verify whole event chain of current [`Profile`]
-    fn verify(&mut self) -> ockam_core::Result<()> {
-        ProfileChangeHistory::check_consistency(&[], self.change_events())?;
+    fn verify(&mut self) -> Result<()> {
+        ProfileChangeHistory::check_consistency(&[], self.change_events()?)?;
 
         self.change_history
             .verify_all_existing_events(&mut self.vault)?;
@@ -125,7 +126,7 @@ impl<V: ProfileVault> ProfileChanges for ProfileImpl<V> {
         let root_key_id = self.vault.compute_key_id_for_public_key(&root_public_key)?;
         let profile_id = ProfileIdentifier::from_key_id(root_key_id);
 
-        if &profile_id != self.identifier() {
+        if &profile_id != self.identifier()? {
             return Err(OckamError::ProfileIdDoesntMatch.into());
         }
 
@@ -138,7 +139,7 @@ impl<V: ProfileVault> ProfileSecrets for ProfileImpl<V> {
         &mut self,
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
-    ) -> ockam_core::Result<()> {
+    ) -> Result<()> {
         let event = {
             let root_secret = self.get_root_secret()?;
             self.create_key_event(key_attributes, attributes, Some(&root_secret))?
@@ -150,7 +151,7 @@ impl<V: ProfileVault> ProfileSecrets for ProfileImpl<V> {
         &mut self,
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
-    ) -> ockam_core::Result<()> {
+    ) -> Result<()> {
         let event = {
             let root_secret = self.get_root_secret()?;
             self.rotate_key_event(key_attributes, attributes, &root_secret)?
@@ -159,19 +160,19 @@ impl<V: ProfileVault> ProfileSecrets for ProfileImpl<V> {
     }
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
-    fn get_secret_key(&mut self, key_attributes: &KeyAttributes) -> ockam_core::Result<Secret> {
+    fn get_secret_key(&mut self, key_attributes: &KeyAttributes) -> Result<Secret> {
         let event =
-            ProfileChangeHistory::find_last_key_event(self.change_events(), key_attributes)?
+            ProfileChangeHistory::find_last_key_event(self.change_events()?, key_attributes)?
                 .clone();
         Self::get_secret_key_from_event(key_attributes, &event, &mut self.vault)
     }
 
-    fn get_public_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<PublicKey> {
+    fn get_public_key(&mut self, key_attributes: &KeyAttributes) -> Result<PublicKey> {
         self.change_history.get_public_key(key_attributes)
     }
-    fn get_root_secret(&mut self) -> ockam_core::Result<Secret> {
+    fn get_root_secret(&mut self) -> Result<Secret> {
         let public_key =
-            ProfileChangeHistory::get_current_profile_update_public_key(self.change_events())?;
+            ProfileChangeHistory::get_current_profile_update_public_key(self.change_events()?)?;
 
         let key_id = self.vault.compute_key_id_for_public_key(&public_key)?;
         self.vault.get_secret_by_key_id(&key_id)
@@ -179,32 +180,32 @@ impl<V: ProfileVault> ProfileSecrets for ProfileImpl<V> {
 }
 
 impl<V: ProfileVault> ProfileContacts for ProfileImpl<V> {
-    fn contacts(&self) -> &ContactsDb {
-        &self.contacts
+    fn contacts(&mut self) -> Result<ContactsDb> {
+        Ok(self.contacts.clone())
     }
 
-    fn to_contact(&self) -> Contact {
-        Contact::new(
+    fn to_contact(&mut self) -> Result<Contact> {
+        Ok(Contact::new(
             self.identifier.clone(),
             self.change_history.as_ref().to_vec(),
-        )
+        ))
     }
 
-    fn serialize_to_contact(&self) -> ockam_core::Result<Vec<u8>> {
-        let contact = self.to_contact();
+    fn serialize_to_contact(&mut self) -> Result<Vec<u8>> {
+        let contact = self.to_contact()?;
 
         Profile::serialize_contact(&contact)
     }
 
-    fn get_contact(&self, id: &ProfileIdentifier) -> Option<&Contact> {
-        self.contacts.get(id)
+    fn get_contact(&mut self, id: &ProfileIdentifier) -> Result<Option<Contact>> {
+        Ok(self.contacts.get(id).map(|c| c.clone()))
     }
 
-    fn verify_contact(&mut self, contact: &Contact) -> ockam_core::Result<()> {
+    fn verify_contact(&mut self, contact: &Contact) -> Result<()> {
         contact.verify(&mut self.vault)
     }
 
-    fn verify_and_add_contact(&mut self, contact: Contact) -> ockam_core::Result<()> {
+    fn verify_and_add_contact(&mut self, contact: Contact) -> Result<()> {
         self.verify_contact(&contact)?;
 
         let _ = self.contacts.insert(contact.identifier().clone(), contact);
@@ -216,7 +217,7 @@ impl<V: ProfileVault> ProfileContacts for ProfileImpl<V> {
         &mut self,
         profile_id: &ProfileIdentifier,
         change_events: Vec<ProfileChangeEvent>,
-    ) -> ockam_core::Result<()> {
+    ) -> Result<()> {
         let contact = self
             .contacts
             .get_mut(profile_id)
@@ -232,7 +233,7 @@ impl<V: ProfileVault> ProfileAuth for ProfileImpl<V> {
     fn generate_authentication_proof(
         &mut self,
         channel_state: &[u8],
-    ) -> ockam_core::Result<Vec<u8>> {
+    ) -> Result<Vec<u8>> {
         let root_secret = self.get_root_secret()?;
 
         Authentication::generate_proof(channel_state, &root_secret, &mut self.vault)
@@ -245,9 +246,9 @@ impl<V: ProfileVault> ProfileAuth for ProfileImpl<V> {
         channel_state: &[u8],
         responder_contact_id: &ProfileIdentifier,
         proof: &[u8],
-    ) -> ockam_core::Result<bool> {
+    ) -> Result<bool> {
         let contact = self
-            .get_contact(responder_contact_id)
+            .get_contact(responder_contact_id)?
             .ok_or(OckamError::ContactNotFound)?;
 
         Authentication::verify_proof(

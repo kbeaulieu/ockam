@@ -124,7 +124,7 @@ impl<V: ProfileVault> ProfileImpl<V> {
         root_key: Option<&Secret>,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         // Creating key after it was revoked is forbidden
-        if ProfileChangeHistory::find_last_key_event(self.change_events(), &key_attributes).is_ok()
+        if ProfileChangeHistory::find_last_key_event(self.change_events()?, &key_attributes).is_ok()
         {
             return Err(OckamError::InvalidInternalState.into());
         }

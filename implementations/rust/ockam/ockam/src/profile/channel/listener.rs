@@ -1,18 +1,18 @@
-use crate::{ProfileImpl, ProfileVault, Responder};
+use crate::{ProfileImpl, ProfileVault, Responder, ProfileTrait};
 use ockam_channel::{CreateResponderChannelMessage, SecureChannel};
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::Context;
 use rand::random;
 
-pub(crate) struct ProfileChannelListener<V: ProfileVault> {
-    profile: ProfileImpl<V>, // TODO: Avoid copying profile
+pub(crate) struct ProfileChannelListener<V: ProfileVault, P: ProfileTrait + Clone> {
+    profile: P,
     vault: V,
     listener_address: Option<Address>,
 }
 
-impl<V: ProfileVault> ProfileChannelListener<V> {
-    pub fn new(profile: ProfileImpl<V>, vault: V) -> Self {
+impl<V: ProfileVault, P: ProfileTrait + Clone> ProfileChannelListener<V, P> {
+    pub fn new(profile: P, vault: V) -> Self {
         ProfileChannelListener {
             profile,
             vault,
@@ -22,7 +22,7 @@ impl<V: ProfileVault> ProfileChannelListener<V> {
 }
 
 #[crate::worker]
-impl<V: ProfileVault> Worker for ProfileChannelListener<V> {
+impl<V: ProfileVault, P: ProfileTrait + Clone> Worker for ProfileChannelListener<V, P> {
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 
