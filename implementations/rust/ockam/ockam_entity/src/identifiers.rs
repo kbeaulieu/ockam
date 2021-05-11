@@ -14,6 +14,10 @@ impl ProfileIdentifier {
     pub fn to_string_representation(&self) -> String {
         format!("P_ID.{}", &self.0)
     }
+
+    pub fn key_id(&self) -> &KeyId {
+        &self.0
+    }
 }
 
 /// Unique [`crate::ProfileChangeEvent`] identifier, computed as SHA256 of the event data

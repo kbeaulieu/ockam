@@ -33,6 +33,8 @@ mod change;
 pub use change::*;
 mod channel;
 pub(crate) use channel::*;
+mod entity;
+pub use entity::*;
 mod error;
 pub use error::*;
 
