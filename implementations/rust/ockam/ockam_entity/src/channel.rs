@@ -1,4 +1,4 @@
-use crate::{ProfileImpl, ProfileVault, ProfileVaultAccess};
+use crate::{ProfileTrait, ProfileVault};
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 
@@ -11,24 +11,43 @@ pub(crate) use listener::*;
 mod messages;
 pub(crate) use messages::*;
 
-impl<V: ProfileVault> ProfileImpl<V> {
+#[allow(dead_code)]
+struct SecureChannel {}
+
+impl SecureChannel {
     /// Create mutually authenticated secure channel
-    pub async fn create_secure_channel<A: Into<Route>>(
-        &mut self,
+    #[allow(dead_code)]
+    pub async fn create_secure_channel<R, V, P>(
         ctx: &Context,
-        route: A,
-    ) -> Result<Address> {
-        Initiator::create(ctx, route, self).await
+        profile: &mut P,
+        route: R,
+    ) -> Result<Address>
+    where
+        R: Into<Route>,
+        V: ProfileVault,
+        P: ProfileTrait<V>,
+    {
+        Initiator::create(ctx, route, profile).await
     }
 
     /// Create mutually authenticated secure channel listener
-    pub async fn create_secure_channel_listener<A: Into<Address>>(
-        &mut self,
+    #[allow(dead_code)]
+    pub async fn create_secure_channel_listener<A, V, P>(
         ctx: &Context,
+        mut profile: P,
         address: A,
-    ) -> Result<()> {
-        let clone = self.clone();
-        let listener = ProfileChannelListener::new(clone, self.vault());
+    ) -> Result<()>
+    where
+        A: Into<Address>,
+        V: ProfileVault,
+        P: ProfileTrait<V>,
+    {
+        let vault = profile.vault();
+        let listener = ProfileChannelListener {
+            profile,
+            vault,
+            listener_address: None,
+        };
         ctx.start_worker(address.into(), listener).await
     }
 }
@@ -36,7 +55,7 @@ impl<V: ProfileVault> ProfileImpl<V> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Profile;
+    use crate::{Entity, Profile};
     use ockam_vault_sync_core::Vault;
 
     #[test]
@@ -46,17 +65,23 @@ mod test {
             .execute(async move {
                 let vault = Vault::create(&ctx).unwrap();
 
-                let mut alice = Profile::create(&ctx, &vault).unwrap();
-                let mut bob = Profile::create(&ctx, &vault).unwrap();
+                let alice = Profile::create(&ctx, &vault).unwrap();
+                let bob = Profile::create(&ctx, &vault).unwrap();
 
-                bob.create_secure_channel_listener(&ctx, "bob_listener")
+                let bob = Entity::new(bob);
+                let mut alice = Entity::new(alice);
+
+                SecureChannel::create_secure_channel_listener(&ctx, bob, "bob_listener")
                     .await
                     .unwrap();
 
-                let alice_channel = alice
-                    .create_secure_channel(&ctx, Route::new().append("bob_listener"))
-                    .await
-                    .unwrap();
+                let alice_channel = SecureChannel::create_secure_channel(
+                    &ctx,
+                    &mut alice,
+                    Route::new().append("bob_listener"),
+                )
+                .await
+                .unwrap();
 
                 ctx.send(
                     Route::new().append(alice_channel).append(ctx.address()),

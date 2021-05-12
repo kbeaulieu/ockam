@@ -93,5 +93,8 @@ pub trait ProfileTrait<V: ProfileVault>:
     + ProfileContacts
     + ProfileAuth
     + ProfileVaultAccess<V>
+    + Send
+    + Clone
+    + 'static
 {
 }

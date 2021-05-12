@@ -1,6 +1,6 @@
 use crate::{
-    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, Confirm, EntityError, ProfileAuth,
-    ProfileContacts, ProfileImpl, ProfileVault, ProfileVaultAccess,
+    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, Confirm, EntityError,
+    ProfileTrait, ProfileVault,
 };
 use async_trait::async_trait;
 use ockam_channel::SecureChannel;
@@ -19,10 +19,10 @@ pub(crate) struct Initiator {
 }
 
 impl Initiator {
-    pub async fn create<R: Into<Route>, V: ProfileVault>(
+    pub async fn create<R: Into<Route>, V: ProfileVault, P: ProfileTrait<V>>(
         ctx: &Context,
         route: R,
-        profile: &mut ProfileImpl<V>,
+        profile: &mut P,
     ) -> Result<Address> {
         let vault = profile.vault();
         let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());

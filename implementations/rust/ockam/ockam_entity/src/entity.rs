@@ -17,7 +17,7 @@ pub struct Entity<V: ProfileVault> {
 
 impl<V: ProfileVault> Entity<V> {
     #[allow(dead_code)]
-    fn new(default_profile: ProfileImpl<V>) -> Self {
+    pub fn new(default_profile: ProfileImpl<V>) -> Self {
         let idref = default_profile.identifier();
         let default_profile_identifier = ProfileIdentifier::from_key_id(idref.key_id().clone());
         let profiles = vec![default_profile];
