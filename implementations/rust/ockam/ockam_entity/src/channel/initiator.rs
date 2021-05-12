@@ -1,6 +1,6 @@
 use crate::{
     ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, Confirm, EntityError, ProfileAuth,
-    ProfileContacts, ProfileImpl, ProfileVault,
+    ProfileContacts, ProfileImpl, ProfileVault, ProfileVaultAccess,
 };
 use async_trait::async_trait;
 use ockam_channel::SecureChannel;

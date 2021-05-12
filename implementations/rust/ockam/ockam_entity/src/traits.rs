@@ -1,12 +1,16 @@
 use crate::{
     Contact, ContactsDb, KeyAttributes, ProfileChangeEvent, ProfileEventAttributes,
-    ProfileIdentifier,
+    ProfileIdentifier, ProfileVault,
 };
 use ockam_vault_core::{PublicKey, Secret};
 
 pub trait ProfileIdentity {
     /// Return unique [`Profile`] identifier, which is equal to sha256 of the root public key
     fn identifier(&self) -> &ProfileIdentifier;
+}
+
+pub trait ProfileVaultAccess<V: ProfileVault> {
+    fn vault(&mut self) -> V;
 }
 
 pub trait ProfileChanges {
@@ -82,7 +86,12 @@ pub trait ProfileSecrets {
 }
 
 /// Supertrait of a Profile
-pub trait ProfileTrait:
-    ProfileIdentity + ProfileChanges + ProfileSecrets + ProfileContacts + ProfileAuth
+pub trait ProfileTrait<V: ProfileVault>:
+    ProfileIdentity
+    + ProfileChanges
+    + ProfileSecrets
+    + ProfileContacts
+    + ProfileAuth
+    + ProfileVaultAccess<V>
 {
 }

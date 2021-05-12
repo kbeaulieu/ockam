@@ -3,7 +3,7 @@ use crate::history::ProfileChangeHistory;
 use crate::{
     Contact, ContactsDb, EntityError, EventIdentifier, KeyAttributes, Profile, ProfileAuth,
     ProfileChangeEvent, ProfileChanges, ProfileContacts, ProfileEventAttributes, ProfileIdentifier,
-    ProfileIdentity, ProfileSecrets, ProfileVault,
+    ProfileIdentity, ProfileSecrets, ProfileVault, ProfileVaultAccess,
 };
 use ockam_vault_core::{PublicKey, Secret};
 
@@ -35,9 +35,9 @@ impl<V: ProfileVault> ProfileImpl<V> {
     }
 }
 
-impl<V: ProfileVault> ProfileImpl<V> {
+impl<V: ProfileVault> ProfileVaultAccess<V> for ProfileImpl<V> {
     /// Return clone of Vault
-    pub fn vault(&self) -> V {
+    fn vault(&mut self) -> V {
         self.vault.clone()
     }
 }

@@ -1,4 +1,4 @@
-use crate::{ProfileImpl, ProfileVault};
+use crate::{ProfileImpl, ProfileVault, ProfileVaultAccess};
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 
@@ -49,12 +49,12 @@ mod test {
                 let mut alice = Profile::create(&ctx, &vault).unwrap();
                 let mut bob = Profile::create(&ctx, &vault).unwrap();
 
-                bob.create_secure_channel_listener(&mut ctx, "bob_listener")
+                bob.create_secure_channel_listener(&ctx, "bob_listener")
                     .await
                     .unwrap();
 
                 let alice_channel = alice
-                    .create_secure_channel(&mut ctx, Route::new().append("bob_listener"))
+                    .create_secure_channel(&ctx, Route::new().append("bob_listener"))
                     .await
                     .unwrap();
 

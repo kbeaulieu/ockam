@@ -1,13 +1,14 @@
 use crate::{
     Contact, ContactsDb, KeyAttributes, ProfileAuth, ProfileChangeEvent, ProfileChanges,
     ProfileContacts, ProfileEventAttributes, ProfileIdentifier, ProfileIdentity, ProfileImpl,
-    ProfileSecrets, ProfileTrait, ProfileVault,
+    ProfileSecrets, ProfileTrait, ProfileVault, ProfileVaultAccess,
 };
 
 use crate::EntityError::ProfileNotFound;
 use ockam_core::Result;
 use ockam_vault::ockam_vault_core::{PublicKey, Secret};
 
+/// An Entity represents an identity in various authentication contexts.
 #[derive(Clone)]
 pub struct Entity<V: ProfileVault> {
     default_profile_identifier: ProfileIdentifier,
@@ -158,6 +159,17 @@ impl<V: ProfileVault> ProfileIdentity for Entity<V> {
     }
 }
 
+impl<V: ProfileVault> ProfileVaultAccess<V> for Entity<V> {
+    fn vault(&mut self) -> V {
+        for profile in &mut self.profiles {
+            if &self.default_profile_identifier == profile.identifier() {
+                return profile.vault();
+            }
+        }
+        panic!("Entity has no default profile")
+    }
+}
+
 impl<V: ProfileVault> ProfileSecrets for Entity<V> {
     fn create_key(
         &mut self,
@@ -212,7 +224,7 @@ impl<V: ProfileVault> ProfileSecrets for Entity<V> {
     }
 }
 
-impl<V: ProfileVault> ProfileTrait for Entity<V> {}
+impl<V: ProfileVault> ProfileTrait<V> for Entity<V> {}
 #[cfg(test)]
 #[allow(unreachable_code, unused_variables)]
 mod test {
