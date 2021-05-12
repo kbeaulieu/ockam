@@ -207,6 +207,10 @@ impl<V: ProfileVault> ProfileContacts for ProfileImpl<V> {
     }
 
     fn verify_and_add_contact(&mut self, contact: Contact) -> ockam_core::Result<()> {
+        // Don't allow a profile to be a contact of itself.
+        if &self.identifier == contact.identifier() {
+            return Err(EntityError::InvalidParameter.into());
+        }
         self.verify_contact(&contact)?;
 
         let _ = self.contacts.insert(contact.identifier().clone(), contact);
