@@ -1,12 +1,15 @@
-use crate::{
-    Contact, ContactsDb, KeyAttributes, ProfileAuth, ProfileChangeEvent, ProfileChanges,
-    ProfileContacts, ProfileEventAttributes, ProfileIdentifier, ProfileIdentity, ProfileImpl,
-    ProfileSecrets, ProfileTrait, ProfileVault, ProfileVaultAccess,
-};
+use crate::{ProfileIdentifier, ProfileIdentity, ProfileImpl, ProfileTrait, ProfileVault};
 
-use crate::EntityError::ProfileNotFound;
-use ockam_core::Result;
-use ockam_vault::ockam_vault_core::{PublicKey, Secret};
+pub mod authentication;
+pub use authentication::*;
+pub mod change;
+pub use change::*;
+pub mod contacts;
+pub use contacts::*;
+pub mod identifiers;
+pub use identifiers::*;
+pub mod secrets;
+pub use secrets::*;
 
 /// An Entity represents an identity in various authentication contexts.
 #[derive(Clone)]
@@ -34,197 +37,8 @@ impl<V: ProfileVault> Entity<V> {
     }
 }
 
-impl<V: ProfileVault> ProfileAuth for Entity<V> {
-    fn generate_authentication_proof(&mut self, channel_state: &[u8]) -> Result<Vec<u8>> {
-        if let Some(profile) = self.default_profile() {
-            profile.clone().generate_authentication_proof(channel_state)
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-
-    fn verify_authentication_proof(
-        &mut self,
-        channel_state: &[u8],
-        responder_contact_id: &ProfileIdentifier,
-        proof: &[u8],
-    ) -> Result<bool> {
-        if let Some(profile) = self.default_profile() {
-            profile
-                .clone()
-                .verify_authentication_proof(channel_state, responder_contact_id, proof)
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-}
-
-impl<V: ProfileVault> ProfileChanges for Entity<V> {
-    fn change_events(&self) -> &[ProfileChangeEvent] {
-        if let Some(profile) = self.default_profile() {
-            profile.change_events()
-        } else {
-            &[]
-        }
-    }
-
-    fn update_no_verification(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
-        for profile in &mut self.profiles {
-            if &self.default_profile_identifier == profile.identifier() {
-                return profile.update_no_verification(change_event);
-            }
-        }
-        Err(ProfileNotFound.into())
-    }
-
-    fn verify(&mut self) -> Result<()> {
-        if let Some(profile) = self.default_profile() {
-            profile.clone().verify()
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-}
-
-impl<V: ProfileVault> ProfileContacts for Entity<V> {
-    fn contacts(&self) -> &ContactsDb {
-        if let Some(profile) = self.default_profile() {
-            profile.contacts()
-        } else {
-            /* Since the return value is a reference, and we have no default profile, panic.
-            We could potentially store an empty contacts db somewhere and return it here, but that
-            seems like a waste. */
-            panic!("Entity has no default profile")
-        }
-    }
-
-    fn to_contact(&self) -> Contact {
-        if let Some(profile) = self.default_profile() {
-            profile.to_contact()
-        } else {
-            panic!("Entity has no default profile")
-        }
-    }
-
-    fn serialize_to_contact(&self) -> Result<Vec<u8>> {
-        if let Some(profile) = self.default_profile() {
-            profile.serialize_to_contact()
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-
-    fn get_contact(&self, id: &ProfileIdentifier) -> Option<&Contact> {
-        if let Some(profile) = self.default_profile() {
-            profile.get_contact(id)
-        } else {
-            None
-        }
-    }
-
-    fn verify_contact(&mut self, contact: &Contact) -> Result<()> {
-        if let Some(profile) = self.default_profile() {
-            profile.clone().verify_contact(contact)
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-
-    fn verify_and_add_contact(&mut self, contact: Contact) -> Result<()> {
-        for profile in &mut self.profiles {
-            if &self.default_profile_identifier == profile.identifier() {
-                return profile.verify_and_add_contact(contact);
-            }
-        }
-        Err(ProfileNotFound.into())
-    }
-
-    fn verify_and_update_contact(
-        &mut self,
-        profile_id: &ProfileIdentifier,
-        change_events: Vec<ProfileChangeEvent>,
-    ) -> Result<()> {
-        for profile in &mut self.profiles {
-            if &self.default_profile_identifier == profile.identifier() {
-                return profile.verify_and_update_contact(profile_id, change_events);
-            }
-        }
-        Err(ProfileNotFound.into())
-    }
-}
-
-impl<V: ProfileVault> ProfileIdentity for Entity<V> {
-    fn identifier(&self) -> &ProfileIdentifier {
-        &self.default_profile_identifier
-    }
-}
-
-impl<V: ProfileVault> ProfileVaultAccess<V> for Entity<V> {
-    fn vault(&mut self) -> V {
-        for profile in &mut self.profiles {
-            if &self.default_profile_identifier == profile.identifier() {
-                return profile.vault();
-            }
-        }
-        panic!("Entity has no default profile")
-    }
-}
-
-impl<V: ProfileVault> ProfileSecrets for Entity<V> {
-    fn create_key(
-        &mut self,
-        key_attributes: KeyAttributes,
-        attributes: Option<ProfileEventAttributes>,
-    ) -> Result<()> {
-        for profile in &mut self.profiles {
-            if &self.default_profile_identifier == profile.identifier() {
-                return profile.create_key(key_attributes, attributes);
-            }
-        }
-        Err(ProfileNotFound.into())
-    }
-
-    fn rotate_key(
-        &mut self,
-        key_attributes: KeyAttributes,
-        attributes: Option<ProfileEventAttributes>,
-    ) -> Result<()> {
-        for profile in &mut self.profiles {
-            if &self.default_profile_identifier == profile.identifier() {
-                return profile.rotate_key(key_attributes, attributes);
-            }
-        }
-        Err(ProfileNotFound.into())
-    }
-
-    fn get_secret_key(&mut self, key_attributes: &KeyAttributes) -> Result<Secret> {
-        for profile in &mut self.profiles {
-            if &self.default_profile_identifier == profile.identifier() {
-                return profile.get_secret_key(key_attributes);
-            }
-        }
-        Err(ProfileNotFound.into())
-    }
-
-    fn get_public_key(&self, key_attributes: &KeyAttributes) -> Result<PublicKey> {
-        if let Some(profile) = self.default_profile() {
-            profile.get_public_key(key_attributes)
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-
-    fn get_root_secret(&mut self) -> Result<Secret> {
-        for profile in &mut self.profiles {
-            if &self.default_profile_identifier == profile.identifier() {
-                return profile.get_root_secret();
-            }
-        }
-        Err(ProfileNotFound.into())
-    }
-}
-
 impl<V: ProfileVault> ProfileTrait<V> for Entity<V> {}
+
 #[cfg(test)]
 #[allow(unreachable_code, unused_variables)]
 mod test {
