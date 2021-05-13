@@ -44,6 +44,13 @@ impl EventIdentifier {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand::{thread_rng, RngCore};
+
+    impl ProfileIdentifier {
+        pub fn random() -> ProfileIdentifier {
+            ProfileIdentifier(format!("{:x}", thread_rng().next_u64()))
+        }
+    }
 
     #[test]
     fn test_new() {

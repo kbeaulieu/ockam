@@ -1,4 +1,5 @@
 use crate::{ProfileIdentifier, ProfileIdentity, ProfileImpl, ProfileTrait, ProfileVault};
+use cfg_if::cfg_if;
 
 pub mod authentication;
 pub use authentication::*;
@@ -10,6 +11,8 @@ pub mod identifiers;
 pub use identifiers::*;
 pub mod secrets;
 pub use secrets::*;
+pub mod profile_set;
+pub use profile_set::*;
 
 /// An Entity represents an identity in various authentication contexts.
 #[derive(Clone)]
@@ -35,9 +38,22 @@ impl<V: ProfileVault> Entity<V> {
             .iter()
             .find(|profile| &self.default_profile_identifier == profile.identifier())
     }
+
+    fn _add_profile(&mut self, profile: ProfileImpl<V>) {
+        self.profiles.push(profile);
+    }
 }
 
 impl<V: ProfileVault> ProfileTrait<V> for Entity<V> {}
+
+cfg_if! {
+    if #[cfg(test)] {
+        pub mod mock_profile;
+        pub use mock_profile::test::*;
+        pub mod mock_vault;
+        pub use mock_vault::test::*;
+    }
+}
 
 #[cfg(test)]
 #[allow(unreachable_code, unused_variables)]
@@ -53,7 +69,6 @@ mod test {
         let vault = Vault::create(ctx)?;
         let vault = VaultSync::create_with_worker(ctx, &vault)?;
 
-        // todo: test vault that allows this?: let vault = TestVault::default();
         let profile = ProfileImpl::create_internal(None, vault);
         assert!(profile.is_ok());
 
@@ -159,19 +174,32 @@ mod test {
         Ok(())
     }
 
+    fn entity_profile_mgmt_test<V: ProfileVault>(
+        ctx: &Context,
+        e: Entity<V>,
+    ) -> ockam_core::Result<()> {
+        let vault = Vault::create(ctx)?;
+        let bank_profile = Profile::create(ctx, &vault)?;
+
+        //    e.add_profile(bank_profile);
+        Ok(())
+    }
+
+    async fn entity_all_tests(mut ctx: Context) -> ockam_core::Result<()> {
+        let e = new_entity(&ctx).await?;
+        entity_contacts_tests(&ctx, e.clone()).await?;
+        entity_auth_tests(e.clone())?;
+        entity_change_tests(e.clone())?;
+        entity_secrets_test(e.clone())?;
+        entity_profile_mgmt_test(&ctx, e)?;
+        ctx.stop().await
+    }
+
     #[test]
     fn test_entity_default_profile_delegation() {
-        let (mut ctx, mut executor) = ockam_node::start_node();
+        let (ctx, mut executor) = ockam_node::start_node();
         executor
-            .execute(async move {
-                let e = new_entity(&ctx).await.unwrap();
-                entity_contacts_tests(&ctx, e.clone()).await.unwrap();
-                entity_auth_tests(e.clone()).unwrap();
-                entity_change_tests(e.clone()).unwrap();
-                entity_secrets_test(e).unwrap();
-
-                ctx.stop().await.unwrap();
-            })
+            .execute(async move { entity_all_tests(ctx).await })
             .unwrap();
     }
 }

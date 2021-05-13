@@ -277,6 +277,7 @@ impl Profile {
 
 #[cfg(test)]
 mod test {
+
     use super::*;
     use ockam_vault::SoftwareVault;
     use ockam_vault_sync_core::VaultMutex;
